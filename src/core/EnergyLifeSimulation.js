@@ -197,6 +197,8 @@ export class EnergyLifeSimulation {
     this.dom.simulationSize = document.getElementById('simulationSize');
     this.dom.savePreset = document.getElementById('savePreset');
     this.dom.loadPreset = document.getElementById('loadPreset');
+    this.dom.saveParamsFile = document.getElementById('saveParamsFile');
+    this.dom.loadParamsFile = document.getElementById('loadParamsFile');
     this.dom.speedButtons = Array.from(document.querySelectorAll('.speed-btn'));
     this.dom.modeButtons = Array.from(document.querySelectorAll('.mode-btn'));
     this.dom.fpsLabel = document.getElementById('fps');
@@ -427,31 +429,25 @@ export class EnergyLifeSimulation {
           }
 
           const loaded = JSON.parse(preset);
-          Object.keys(loaded).forEach((key) => {
-            if (!(key in this.params)) return;
-            this.params[key] = loaded[key];
-            const slider = document.getElementById(key);
-            const input = document.getElementById(`${key}Value`);
-            if (slider && input) {
-              slider.value = loaded[key];
-              input.value = loaded[key];
-            }
-            if (this.computeVariables.field?.material?.uniforms[key]) {
-              this.computeVariables.field.material.uniforms[key].value =
-                loaded[key];
-            }
-            if (key === 'extendedMode') {
-              this.extendedMode = loaded[key] > 0 ? 1 : 0;
-              if (this.dom.extendedToggle) {
-                this.dom.extendedToggle.checked = this.extendedMode > 0;
-              }
-            }
-          });
+          this.#applyLoadedParams(loaded);
           alert('Preset loaded!');
         } catch (error) {
           console.error('Failed to load preset:', error);
           alert('Failed to load preset. It may be corrupted.');
         }
+      });
+    }
+
+    // Save/load params to JSON file
+    if (this.dom.saveParamsFile) {
+      this.dom.saveParamsFile.addEventListener('click', () => {
+        this.#saveParamsToFile();
+      });
+    }
+
+    if (this.dom.loadParamsFile) {
+      this.dom.loadParamsFile.addEventListener('click', () => {
+        this.#loadParamsFromFile();
       });
     }
 
@@ -852,6 +848,93 @@ export class EnergyLifeSimulation {
       }
       this.frameCount = 0;
       this.lastTime = currentTime;
+    }
+  }
+
+  #applyLoadedParams(loaded) {
+    Object.keys(loaded).forEach((key) => {
+      if (!(key in this.params)) return;
+      this.params[key] = loaded[key];
+      const slider = document.getElementById(key);
+      const input = document.getElementById(`${key}Value`);
+      if (slider) slider.value = loaded[key];
+      if (input) input.value = loaded[key];
+      if (this.computeVariables.field?.material?.uniforms[key]) {
+        this.computeVariables.field.material.uniforms[key].value = loaded[key];
+      }
+      if (key === 'extendedMode') {
+        this.extendedMode = loaded[key] > 0 ? 1 : 0;
+        if (this.dom.extendedToggle) {
+          this.dom.extendedToggle.checked = this.extendedMode > 0;
+        }
+        if (this.computeVariables.field?.material?.uniforms.extendedMode) {
+          this.computeVariables.field.material.uniforms.extendedMode.value =
+            this.extendedMode;
+        }
+      }
+    });
+  }
+
+  async #saveParamsToFile() {
+    const data = JSON.stringify(this.params, null, 2);
+    const filename = `energy-params-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')}.json`;
+    try {
+      if (window.showDirectoryPicker) {
+        const dirHandle = await window.showDirectoryPicker();
+        const folderHandle = await dirHandle.getDirectoryHandle('saved-params', {
+          create: true,
+        });
+        const fileHandle = await folderHandle.getFileHandle(filename, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(data);
+        await writable.close();
+        alert(`Saved to saved-params/${filename}`);
+        return;
+      }
+    } catch (error) {
+      console.error('Directory save failed, falling back to download:', error);
+    }
+
+    // Fallback: simple download
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async #loadParamsFromFile() {
+    try {
+      if (!window.showOpenFilePicker) {
+        alert('File picker not supported in this browser.');
+        return;
+      }
+      const [handle] = await window.showOpenFilePicker({
+        types: [
+          {
+            description: 'JSON Files',
+            accept: { 'application/json': ['.json'] },
+          },
+        ],
+        excludeAcceptAllOption: false,
+        multiple: false,
+      });
+      const file = await handle.getFile();
+      const text = await file.text();
+      const loaded = JSON.parse(text);
+      this.#applyLoadedParams(loaded);
+      alert('Parameters loaded from file.');
+    } catch (error) {
+      console.error('Failed to load params from file:', error);
+      alert('Failed to load params file. See console for details.');
     }
   }
 

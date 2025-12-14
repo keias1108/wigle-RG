@@ -13,7 +13,7 @@
  * Must be power of 2 for efficient GPU computation
  * Larger = more detail but slower performance
  */
-export const SIMULATION_SIZE = 512;
+export const SIMULATION_SIZE = 256;
 
 /**
  * Maximum kernel radius for neighbor sampling in lifecycle shader

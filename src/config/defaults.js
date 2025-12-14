@@ -45,14 +45,14 @@ export const DEFAULT_PARAMS = {
 
   // Terrain (G) erosion/transport (always on)
   extendedMode: 1, // reuse toggle: 1 = terrain 활성, 0 = 비활성
-  erosionThreshold: 0.7,
-  erosionRate: 0.05,
-  terrainDiffusion: 0.08,
+  erosionThreshold: 0.8,
+  erosionRate: 0.139,
+  terrainDiffusion: 0.62,
   overflowCap: 0.2,
   overflowLeak: 0.05,
   overflowNoise: 0.1,
-  terrainCostCoef: 0.1,
-  terrainRepelCoef: 0.05,
+  terrainCostCoef: 0.0,
+  terrainRepelCoef: 0.03,
 };
 
 /**
